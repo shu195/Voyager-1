@@ -435,6 +435,26 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
     distantSun.position.set(42, 36, 34);
     scene.add(distantSun);
 
+    // Subtle 8.4 GHz X-Band Earth-Link RF Carrier Wavefront (radiates along HGA +Y boresight)
+    const rfPulseGroup = new THREE.Group();
+    const rfRingGeo = new THREE.RingGeometry(0.94, 1.0, 64);
+    rfRingGeo.rotateX(-Math.PI / 2);
+    const rfRings: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; phase: number }[] = [];
+    for (let i = 0; i < 3; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0x38bdf8,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      });
+      const mesh = new THREE.Mesh(rfRingGeo, mat);
+      rfPulseGroup.add(mesh);
+      rfRings.push({ mesh, mat, phase: i / 3 });
+    }
+    scene.add(rfPulseGroup);
+
     // OrbitControls
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.target.copy(DEFAULT_CAM_TARGET);
@@ -737,6 +757,26 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
           }
         }
 
+        // Subtle 8.4 GHz X-Band Earth-Link RF wavefront pulse along HGA +Y boresight
+        const showRf = propsRef.current.lightingMode === 'space';
+        rfPulseGroup.visible = showRf;
+        if (showRf) {
+          const cycle = (now * 0.00022) % 1;
+          for (let i = 0; i < rfRings.length; i++) {
+            const r = rfRings[i];
+            const t = (cycle + r.phase) % 1;
+            const scale = 0.42 + t * 2.15;
+            r.mesh.position.set(0, 2.55 + t * 2.85, 0);
+            r.mesh.scale.setScalar(scale);
+            // Smooth fade-in then fade-out envelope
+            const env = Math.sin(t * Math.PI);
+            r.mat.opacity = env * env * 0.16;
+          }
+          if (!isSoftwareGl) {
+            needsAnotherFrame = true;
+          }
+        }
+
         if (composer && !isSoftwareGl && propsRef.current.bloomEnabled) {
           composer.render();
         } else {
@@ -989,6 +1029,10 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       });
       distantSunGeo.dispose();
       distantSunMat.dispose();
+      rfRingGeo.dispose();
+      for (let i = 0; i < rfRings.length; i++) {
+        rfRings[i].mat.dispose();
+      }
       voyager.dispose();
       textures.dispose();
       envTex.dispose();
@@ -1041,6 +1085,15 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
     <div className="relative w-full h-full overflow-hidden">
       {/* Isolated WebGL Canvas Container */}
       <div ref={mountRef} className="w-full h-full" />
+
+      {/* Whisper-thin Optical Deep-Space Vignette */}
+      <div
+        className="pointer-events-none absolute inset-0 z-[5]"
+        style={{
+          background:
+            'radial-gradient(ellipse at center, transparent 58%, rgba(2, 4, 10, 0.52) 100%)',
+        }}
+      />
 
       {/* 3D-Projected Scientific Data Overlay Callout Pins */}
       <div
