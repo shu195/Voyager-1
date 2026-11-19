@@ -1,0 +1,6 @@
+{
+  "name": "Voyager 1 — 3D Hardware & Mission Explorer",
+  "description": "Interactive WebGL 3D model of NASA's Voyager 1 spacecraft with exploded-view internal circuitry, mission subsystem highlighting, scientific data overlays, and hardware inspection tooltips.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
