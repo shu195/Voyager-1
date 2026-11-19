@@ -1894,6 +1894,45 @@ export function buildVoyagerModel(
   platformBase.castShadow = true;
   scanHeadGroup.add(platformBase);
 
+  // Top thermal radiator louver fins & Kapton tie-down straps on scan platform housing
+  for (let f = 0; f < 6; f++) {
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.016, 0.012), boomAlumMat);
+    fin.position.set(0.14, 0.228, -0.22 + f * 0.088);
+    scanHeadGroup.add(fin);
+  }
+  for (const sz of [-0.17, 0.17]) {
+    const strap = new THREE.Mesh(new THREE.BoxGeometry(0.248, 0.448, 0.022), optGoldMat);
+    strap.position.set(0.14, 0, sz);
+    scanHeadGroup.add(strap);
+  }
+  // Machined elevation gimbal bearing caps
+  for (const side of [-1, 1]) {
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.022, 16), boomAlumMat);
+    cap.rotation.x = Math.PI / 2;
+    cap.position.set(0.08, 0, side * 0.148);
+    scanHeadGroup.add(cap);
+  }
+
+  // Braided Kapton science umbilical harness routed along lower truss chord with aluminum clips
+  const sciUmbilicalCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0.04, -0.05, 0.08),
+    new THREE.Vector3(boomLen * 0.35, -0.085, 0.095),
+    new THREE.Vector3(boomLen * 0.7, -0.08, 0.09),
+    new THREE.Vector3(boomLen - 0.02, -0.045, 0.06),
+  ]);
+  const sciUmbilical = new THREE.Mesh(
+    new THREE.TubeGeometry(sciUmbilicalCurve, 24, 0.013, 8, false),
+    optGoldMat,
+  );
+  sciBoomRoot.add(sciUmbilical);
+  for (let c = 1; c <= 5; c++) {
+    const pt = sciUmbilicalCurve.getPoint(c / 6);
+    const clip = new THREE.Mesh(new THREE.TorusGeometry(0.018, 0.004, 6, 12), boomAlumMat);
+    clip.rotation.y = Math.PI / 2;
+    clip.position.copy(pt);
+    sciBoomRoot.add(clip);
+  }
+
   // Internal focal-plane electronics PCB exposed when housings slide forward
   const scanPcb = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.34, 0.44), optPcbMat);
   scanPcb.position.set(0.19, 0, 0);
@@ -1910,11 +1949,21 @@ export function buildVoyagerModel(
   issTube.castShadow = true;
   issNarrowBarrel.add(issTube);
 
-  // Front knife-edge sun baffle collar & optical corrector glass
+  // Front knife-edge sun baffle collar, stepped flare hood & optical corrector glass
   const issCollar = new THREE.Mesh(new THREE.TorusGeometry(0.092, 0.01, 10, 28), boomAlumMat);
   issCollar.rotation.y = Math.PI / 2;
   issCollar.position.x = 0.44;
   issNarrowBarrel.add(issCollar);
+
+  const issHood = new THREE.Mesh(new THREE.CylinderGeometry(0.106, 0.094, 0.065, 28, 1, true), optBaffleMat);
+  issHood.rotation.z = -Math.PI / 2;
+  issHood.position.x = 0.472;
+  issNarrowBarrel.add(issHood);
+
+  const issBaffleRim = new THREE.Mesh(new THREE.TorusGeometry(0.106, 0.005, 8, 28), optGoldMat);
+  issBaffleRim.rotation.y = Math.PI / 2;
+  issBaffleRim.position.x = 0.504;
+  issNarrowBarrel.add(issBaffleRim);
 
   const issLens = new THREE.Mesh(new THREE.CircleGeometry(0.084, 28), optGlassMat);
   issLens.rotation.y = Math.PI / 2;
