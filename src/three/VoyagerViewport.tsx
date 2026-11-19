@@ -378,6 +378,17 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
     let renderDirty = false;
     let lastTimestamp = performance.now();
 
+    // Pre-allocated screen-space label collision solver buffer (zero per-frame allocations)
+    type PinSlot = {
+      el: HTMLButtonElement;
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      selected: boolean;
+    };
+    const visiblePins: PinSlot[] = [];
+
     const updateProjectedPins = () => {
       const show = propsRef.current.showOverlays;
       const showVec = propsRef.current.showVectors;
@@ -387,6 +398,8 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
 
       voyager.root.updateMatrixWorld(true);
       camera.updateMatrixWorld();
+
+      visiblePins.length = 0;
 
       for (let i = 0; i < COMPONENT_LIST.length; i++) {
         const comp = COMPONENT_LIST[i];
@@ -417,10 +430,60 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
           el.style.opacity = '0';
           el.style.pointerEvents = 'none';
         } else {
-          el.style.transform = `translate3d(${sx.toFixed(1)}px, ${sy.toFixed(1)}px, 0) translate(-50%, -100%)`;
-          el.style.opacity = '1';
-          el.style.pointerEvents = 'auto';
+          visiblePins.push({
+            el,
+            x: sx,
+            y: sy,
+            w: el.offsetWidth || 110,
+            h: el.offsetHeight || 42,
+            selected: isSelected,
+          });
         }
+      }
+
+      // Iterative 2D AABB repulsion pass so floating callouts never collide at any camera angle
+      const padX = 8;
+      const padY = 6;
+      const n = visiblePins.length;
+      for (let iter = 0; iter < 8; iter++) {
+        let moved = false;
+        for (let i = 0; i < n; i++) {
+          const a = visiblePins[i];
+          for (let j = i + 1; j < n; j++) {
+            const b = visiblePins[j];
+            const halfW = (a.w + b.w) * 0.5 + padX;
+            const halfH = (a.h + b.h) * 0.5 + padY;
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const ox = halfW - Math.abs(dx);
+            const oy = halfH - Math.abs(dy);
+            if (ox > 0 && oy > 0) {
+              moved = true;
+              const wa = a.selected ? 0.15 : 0.5;
+              const wb = b.selected ? 0.15 : 0.5;
+              const norm = wa + wb;
+              if (oy <= ox * 1.35) {
+                const dir = dy >= 0 ? 1 : -1;
+                a.y -= dir * oy * (wa / norm);
+                b.y += dir * oy * (wb / norm);
+              } else {
+                const dir = dx >= 0 ? 1 : -1;
+                a.x -= dir * ox * (wa / norm);
+                b.x += dir * ox * (wb / norm);
+              }
+            }
+          }
+        }
+        if (!moved) break;
+      }
+
+      for (let i = 0; i < n; i++) {
+        const p = visiblePins[i];
+        const cx = Math.min(width - p.w * 0.5 - 12, Math.max(p.w * 0.5 + 12, p.x));
+        const cy = Math.min(height - 108, Math.max(p.h + 52, p.y));
+        p.el.style.transform = `translate3d(${cx.toFixed(1)}px, ${cy.toFixed(1)}px, 0) translate(-50%, -100%)`;
+        p.el.style.opacity = '1';
+        p.el.style.pointerEvents = 'auto';
       }
 
       // Project 3D reference vector endpoint tags when Vectors mode is active
