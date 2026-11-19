@@ -44,6 +44,10 @@ function buildLoadsForYear(year: number): Record<string, boolean> {
 }
 
 export default function App() {
+  const isCinematic = useMemo(
+    () => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('cinematic') === '1',
+    [],
+  );
   const [explodeTarget, setExplodeTarget] = useState<number>(0);
   const [activeSubsystem, setActiveSubsystem] = useState<SubsystemId>('all');
   const [selectedComponent, setSelectedComponent] = useState<ComponentId | null>(null);
@@ -261,7 +265,7 @@ export default function App() {
         activeSubsystem={activeSubsystem}
         selectedComponent={selectedComponent}
         hoveredComponent={hoverInfo?.componentId ?? null}
-        showOverlays={showOverlays}
+        showOverlays={isCinematic ? false : showOverlays}
         lightingMode={lightingMode}
         autoOrbit={autoOrbit}
         xrayMode={xrayMode}
@@ -278,8 +282,10 @@ export default function App() {
         onHoverChange={setHoverInfo}
       />
 
-      {/* Minimal Top-Left Brand & Scientific Ephemeris Lockup (Zero Pill Boxes) */}
-      <header className="fixed top-5 left-5 z-20 pointer-events-none">
+      {!isCinematic && (
+        <>
+          {/* Minimal Top-Left Brand & Scientific Ephemeris Lockup (Zero Pill Boxes) */}
+          <header className="fixed top-5 left-5 z-20 pointer-events-none">
         <h1 className="font-display text-2xl sm:text-[26px] font-semibold tracking-tight text-slate-50 leading-none">
           Voyager 1
         </h1>
@@ -424,6 +430,8 @@ export default function App() {
         onToggleAutoOrbit={() => setAutoOrbit((v) => !v)}
         onResetView={handleResetView}
       />
+        </>
+      )}
     </main>
   );
 }

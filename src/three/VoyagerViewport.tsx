@@ -907,6 +907,63 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       },
     };
 
+    // Deterministic 60-second cinematic choreography hook for headless 1080p capture (?cinematic=1)
+    const cinePosCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(6.2, 3.2, 7.0),     // 0s: Wide interstellar establish
+      new THREE.Vector3(4.2, -1.35, 3.4),   // 10s: Dramatic low-angle dish underside glide
+      new THREE.Vector3(1.55, 0.25, 1.85),  // 20s: Intimate Golden Record hero close-up
+      new THREE.Vector3(-4.4, 0.55, 3.9),   // 30s: MHW-RTG triplet & titanium couplers sweep
+      new THREE.Vector3(3.4, 1.15, 4.1),    // 40s: Scan Platform louvers & ISS hood flyby
+      new THREE.Vector3(5.4, 2.5, 5.8),     // 50s: Exploded-view reveal angle
+      new THREE.Vector3(7.6, 3.8, 8.2),     // 60s: Final pull-back into interstellar space
+    ]);
+    const cineTargetCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0.0, 0.3, -0.2),
+      new THREE.Vector3(0.0, 0.55, 0.0),
+      new THREE.Vector3(0.62, 0.16, 0.78),
+      new THREE.Vector3(-1.55, -0.3, 0.2),
+      new THREE.Vector3(1.55, -0.35, -0.25),
+      new THREE.Vector3(0.0, 0.2, 0.0),
+      new THREE.Vector3(0.0, 0.25, -0.2),
+    ]);
+    (window as unknown as { __voyagerCinematicStep?: (tSec: number) => void }).__voyagerCinematicStep = (
+      tSec: number,
+    ) => {
+      const u = THREE.MathUtils.clamp(tSec / 60, 0, 1);
+      // Smoothstep easing for cinematic acceleration/deceleration
+      const eu = u * u * (3 - 2 * u);
+      cinePosCurve.getPoint(eu, camera.position);
+      cineTargetCurve.getPoint(eu, controls.target);
+      camera.lookAt(controls.target);
+
+      // Gentle exploded-view reveal between 44s and 56s
+      let exp = 0;
+      if (tSec > 44 && tSec < 56) {
+        const phase = (tSec - 44) / 12;
+        exp = Math.sin(phase * Math.PI) * 0.42;
+      }
+      voyager.updateExplode(exp);
+
+      // Subtle LECP & gyro motion + X-Band RF wavefront pulse
+      voyager.lecpTurretGroup.rotation.y = Math.sin(tSec * 0.6) * 0.45;
+      const cycle = (tSec * 0.22) % 1;
+      rfPulseGroup.visible = true;
+      for (let i = 0; i < rfRings.length; i++) {
+        const r = rfRings[i];
+        const rt = (cycle + r.phase) % 1;
+        r.mesh.position.set(0, 2.55 + rt * 2.85, 0);
+        r.mesh.scale.setScalar(0.42 + rt * 2.15);
+        const env = Math.sin(rt * Math.PI);
+        r.mat.opacity = env * env * 0.18;
+      }
+
+      if (composer && !isSoftwareGl && propsRef.current.bloomEnabled) {
+        composer.render();
+      } else {
+        renderer.render(scene, camera);
+      }
+    };
+
     // Cancel camera transitions immediately on manual user OrbitControls drag/zoom
     const onControlStart = () => {
       hasCameraGoal = false;
