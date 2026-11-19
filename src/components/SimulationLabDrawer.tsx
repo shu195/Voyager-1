@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Activity,
   Clock,
   Compass,
   Crosshair,
@@ -19,8 +20,9 @@ import {
   MISSION_EPOCHS,
   POWER_LOAD_ITEMS,
 } from '../data/voyagerData';
+import { ScienceInstrumentsDeck } from './ScienceInstrumentsDeck';
 
-type LabTab = 'timeline' | 'power' | 'optics';
+type LabTab = 'timeline' | 'power' | 'optics' | 'instruments';
 
 interface SimulationLabDrawerProps {
   visible: boolean;
@@ -115,43 +117,55 @@ export const SimulationLabDrawer: React.FC<SimulationLabDrawerProps> = ({
         </button>
       </div>
 
-      {/* 3-Tab Switcher */}
-      <div className="grid grid-cols-3 border-b border-slate-800 bg-[#090d16]">
+      {/* 4-Tab Switcher */}
+      <div className="grid grid-cols-4 border-b border-slate-800 bg-[#090d16]">
         <button
           type="button"
           onClick={() => setActiveTab('timeline')}
-          className={`py-2 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+          className={`py-2 text-[11px] font-medium flex items-center justify-center gap-1 border-b-2 transition-colors ${
             activeTab === 'timeline'
               ? 'border-amber-400 text-amber-200 bg-[#0d1423]'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Clock className="w-3.5 h-3.5" />
-          <span>Timeline</span>
+          <Clock className="w-3 h-3" />
+          <span>Epoch</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('power')}
-          className={`py-2 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+          className={`py-2 text-[11px] font-medium flex items-center justify-center gap-1 border-b-2 transition-colors ${
             activeTab === 'power'
               ? 'border-amber-400 text-amber-200 bg-[#0d1423]'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Zap className="w-3.5 h-3.5" />
+          <Zap className="w-3 h-3" />
           <span>Power</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('optics')}
-          className={`py-2 text-xs font-medium flex items-center justify-center gap-1.5 border-b-2 transition-colors ${
+          className={`py-2 text-[11px] font-medium flex items-center justify-center gap-1 border-b-2 transition-colors ${
             activeTab === 'optics'
               ? 'border-amber-400 text-amber-200 bg-[#0d1423]'
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Scissors className="w-3.5 h-3.5" />
+          <Scissors className="w-3 h-3" />
           <span>Cutaway</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('instruments')}
+          className={`py-2 text-[11px] font-medium flex items-center justify-center gap-1 border-b-2 transition-colors ${
+            activeTab === 'instruments'
+              ? 'border-amber-400 text-amber-200 bg-[#0d1423]'
+              : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Activity className="w-3 h-3" />
+          <span>Deck</span>
         </button>
       </div>
 
@@ -564,6 +578,17 @@ export const SimulationLabDrawer: React.FC<SimulationLabDrawerProps> = ({
               <span className="font-mono text-[10px] text-amber-300/80">7 symbols</span>
             </button>
           </>
+        )}
+
+        {activeTab === 'instruments' && (
+          <ScienceInstrumentsDeck
+            missionYear={missionYear}
+            activeLoads={activeLoads}
+            scanAzimuth={scanAzimuth}
+            scanElevation={scanElevation}
+            onToggleLoad={onToggleLoad}
+            onSelectComponent={onSelectComponent}
+          />
         )}
       </div>
     </aside>
