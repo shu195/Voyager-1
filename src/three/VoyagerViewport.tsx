@@ -375,11 +375,40 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       composer.addPass(outputPass);
     }
 
-    // Subtle Studio Environment Reflections for PBR Black MLI, Brushed Aluminum & Golden Record
+    // Custom Deep-Space IBL (black void + HDR solar disc + cosmic rim) vs Cleanroom Studio IBL
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const envTex = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = envTex;
-    scene.environmentIntensity = 0.52;
+    const cleanroomEnvTex = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+
+    const spaceEnvScene = new THREE.Scene();
+    spaceEnvScene.background = new THREE.Color(0x010205);
+    const solarDiscMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(9.5, 8.8, 7.6) });
+    const solarDisc = new THREE.Mesh(new THREE.SphereGeometry(2.2, 16, 12), solarDiscMat);
+    solarDisc.position.set(14, 10, 12);
+    spaceEnvScene.add(solarDisc);
+
+    const cosmicRimMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.55, 0.85, 1.55) });
+    const cosmicRim = new THREE.Mesh(new THREE.SphereGeometry(7.5, 16, 12), cosmicRimMat);
+    cosmicRim.position.set(-16, -4, -14);
+    spaceEnvScene.add(cosmicRim);
+
+    const galacticBandMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0.28, 0.36, 0.52),
+      side: THREE.DoubleSide,
+    });
+    const galacticBand = new THREE.Mesh(new THREE.RingGeometry(16, 22, 32), galacticBandMat);
+    galacticBand.rotation.set(0.45, 0.25, -0.5);
+    spaceEnvScene.add(galacticBand);
+
+    const spaceEnvTex = pmremGenerator.fromScene(spaceEnvScene, 0.02).texture;
+    solarDisc.geometry.dispose();
+    solarDiscMat.dispose();
+    cosmicRim.geometry.dispose();
+    cosmicRimMat.dispose();
+    galacticBand.geometry.dispose();
+    galacticBandMat.dispose();
+
+    scene.environment = spaceEnvTex;
+    scene.environmentIntensity = 0.72;
     pmremGenerator.dispose();
 
     // High-contrast Space Solar Key + Subtle Galactic Rim Rig (sculpts crinkled MLI & louvers)
@@ -804,6 +833,7 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       if (mode === 'cleanroom') {
         scene.background = new THREE.Color(0x131924);
         scene.fog = new THREE.FogExp2(0x131924, 0.006);
+        scene.environment = cleanroomEnvTex;
         scene.environmentIntensity = 0.78;
         keyLight.color.setHex(0xffffff);
         keyLight.intensity = 2.85;
@@ -819,8 +849,9 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       } else {
         scene.background = new THREE.Color(0x020306);
         scene.fog = null;
-        // High-contrast interstellar solar key + crisp silhouette rim (1977 1 AU -> 2026 173 AU)
-        scene.environmentIntensity = 0.36 + clampedSolar * 0.14;
+        // High-contrast interstellar solar key + custom deep-space IBL
+        scene.environment = spaceEnvTex;
+        scene.environmentIntensity = 0.68 + clampedSolar * 0.24;
         keyLight.color.setRGB(
           0.94 + clampedSolar * 0.06,
           0.95 + clampedSolar * 0.03,
@@ -1035,7 +1066,8 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       }
       voyager.dispose();
       textures.dispose();
-      envTex.dispose();
+      spaceEnvTex.dispose();
+      cleanroomEnvTex.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);

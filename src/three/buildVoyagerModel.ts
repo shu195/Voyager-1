@@ -530,10 +530,18 @@ export function buildVoyagerModel(
     // Aerodynamic elliptical low-blockage tripod strut
     addStrut(subRefGroup, pBase, pTop, 0.017, subStrutMat, true, 0.65, 1.35);
 
-    // Bolted tripod mounting shoe on parabolic face
+    // Bolted tripod mounting shoe on parabolic face & top clevis gusset collar
     const shoe = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.068, 0.036, 16), subStrutMat);
     shoe.position.copy(pBase);
     subRefGroup.add(shoe);
+
+    const topClevis = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.032, 0.048, 12), subDichroicMat);
+    topClevis.position.copy(pTop);
+    topClevis.quaternion.setFromUnitVectors(
+      new THREE.Vector3(0, 1, 0),
+      pTop.clone().sub(pBase).normalize(),
+    );
+    subRefGroup.add(topClevis);
 
     // Mid-strut turnbuckle collar
     const mid = pBase.clone().lerp(pTop, 0.45);
@@ -553,6 +561,13 @@ export function buildVoyagerModel(
     new THREE.Vector3(Math.cos(Math.PI / 6) * 0.24, focusY + 0.04, Math.sin(Math.PI / 6) * 0.24),
   ]);
   subRefGroup.add(new THREE.Mesh(new THREE.TubeGeometry(lgaCableCurve, 18, 0.007, 8, false), subDichroicMat));
+  // Coax waveguide tie-down clamps along Strut 0
+  for (let cl = 1; cl <= 3; cl++) {
+    const pt = lgaCableCurve.getPoint(cl / 4);
+    const clamp = new THREE.Mesh(new THREE.TorusGeometry(0.014, 0.0035, 6, 12), subStrutMat);
+    clamp.position.copy(pt);
+    subRefGroup.add(clamp);
+  }
 
   // Sub-reflector drum housing + machined flange bevels
   const subDrum = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.15, 36), subCapMat);
@@ -1662,6 +1677,21 @@ export function buildVoyagerModel(
       molyEnd.rotation.z = Math.PI / 2;
       molyEnd.position.x = ex;
       coreGroup.add(molyEnd);
+    }
+
+    // Inter-RTG titanium coupling collar & 4 axial tie-rods between adjacent units
+    if (u < 2) {
+      const coupler = new THREE.Mesh(new THREE.TorusGeometry(0.19, 0.014, 8, 24), rtgMolyMat);
+      coupler.rotation.y = Math.PI / 2;
+      coupler.position.x = -0.46;
+      unitGroup.add(coupler);
+      for (let tr = 0; tr < 4; tr++) {
+        const ta = (tr / 4) * Math.PI * 2 + Math.PI / 4;
+        const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.14, 8), rtgMolyMat);
+        rod.rotation.z = Math.PI / 2;
+        rod.position.set(-0.46, Math.cos(ta) * 0.185, Math.sin(ta) * 0.185);
+        unitGroup.add(rod);
+      }
     }
 
     // Split Beryllium-Coated Finned Radiator Casings
