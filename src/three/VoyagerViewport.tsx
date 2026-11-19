@@ -89,11 +89,10 @@ function detectSoftwareGl(): boolean {
   }
 }
 
-function createStarfield(starSpriteMap: THREE.Texture): THREE.Points {
-  const count = 2600;
-  const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
-  const color = new THREE.Color();
+function createStarfield(starSpriteMap: THREE.Texture): THREE.Group {
+  const group = new THREE.Group();
+  // Tilt galactic plane diagonally across the deep-space backdrop
+  group.rotation.set(0.42, 0.28, -0.52);
 
   let seed = 19770905;
   const rand = () => {
@@ -101,15 +100,22 @@ function createStarfield(starSpriteMap: THREE.Texture): THREE.Points {
     return (seed - 1) / 2147483646;
   };
 
+  const color = new THREE.Color();
+
+  // Layer 1: Primary multi-spectral starfield (concentrated along galactic plane)
+  const count = 2600;
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+
   for (let i = 0; i < count; i++) {
     const u = rand();
     const v = rand();
     const theta = u * Math.PI * 2;
-    const isBand = rand() < 0.35;
+    const isBand = rand() < 0.44;
     const phi = isBand
-      ? Math.PI / 2 + (rand() - 0.5) * 0.42
+      ? Math.PI / 2 + (rand() - 0.5) * 0.34
       : Math.acos(2 * v - 1);
-    const radius = 58 + rand() * 38;
+    const radius = 58 + rand() * 40;
 
     positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
     positions[i * 3 + 1] = radius * Math.cos(phi);
@@ -117,16 +123,16 @@ function createStarfield(starSpriteMap: THREE.Texture): THREE.Points {
 
     // Authentic blackbody star tints (O/B cool white, G white, K/M warm gold)
     const spec = rand();
-    if (spec < 0.22) {
-      color.setRGB(0.76, 0.87, 1.0);
-    } else if (spec < 0.7) {
+    if (spec < 0.24) {
+      color.setRGB(0.72, 0.86, 1.0);
+    } else if (spec < 0.68) {
       color.setRGB(0.97, 0.98, 1.0);
-    } else if (spec < 0.9) {
-      color.setRGB(1.0, 0.93, 0.72);
+    } else if (spec < 0.88) {
+      color.setRGB(1.0, 0.92, 0.7);
     } else {
-      color.setRGB(1.0, 0.8, 0.52);
+      color.setRGB(1.0, 0.76, 0.46);
     }
-    const brightness = 0.28 + Math.pow(rand(), 1.6) * 0.72;
+    const brightness = 0.24 + Math.pow(rand(), 1.8) * 0.76;
     colors[i * 3] = color.r * brightness;
     colors[i * 3 + 1] = color.g * brightness;
     colors[i * 3 + 2] = color.b * brightness;
@@ -137,17 +143,96 @@ function createStarfield(starSpriteMap: THREE.Texture): THREE.Points {
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   const mat = new THREE.PointsMaterial({
-    size: 0.48,
+    size: 0.44,
     map: starSpriteMap,
     sizeAttenuation: true,
     vertexColors: true,
     transparent: true,
-    opacity: 0.96,
+    opacity: 0.95,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
   });
+  group.add(new THREE.Points(geo, mat));
 
-  return new THREE.Points(geo, mat);
+  // Layer 2: Brighter hero stars for multi-magnitude depth
+  const heroCount = 150;
+  const heroPos = new Float32Array(heroCount * 3);
+  const heroCol = new Float32Array(heroCount * 3);
+  for (let i = 0; i < heroCount; i++) {
+    const theta = rand() * Math.PI * 2;
+    const phi = rand() < 0.5 ? Math.PI / 2 + (rand() - 0.5) * 0.48 : Math.acos(2 * rand() - 1);
+    const radius = 56 + rand() * 28;
+    heroPos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    heroPos[i * 3 + 1] = radius * Math.cos(phi);
+    heroPos[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+    const spec = rand();
+    if (spec < 0.35) {
+      color.setRGB(0.68, 0.85, 1.0);
+    } else if (spec < 0.72) {
+      color.setRGB(1.0, 0.98, 0.94);
+    } else {
+      color.setRGB(1.0, 0.84, 0.56);
+    }
+    const b = 0.72 + rand() * 0.28;
+    heroCol[i * 3] = color.r * b;
+    heroCol[i * 3 + 1] = color.g * b;
+    heroCol[i * 3 + 2] = color.b * b;
+  }
+  const heroGeo = new THREE.BufferGeometry();
+  heroGeo.setAttribute('position', new THREE.BufferAttribute(heroPos, 3));
+  heroGeo.setAttribute('color', new THREE.BufferAttribute(heroCol, 3));
+  const heroMat = new THREE.PointsMaterial({
+    size: 0.92,
+    map: starSpriteMap,
+    sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.92,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  group.add(new THREE.Points(heroGeo, heroMat));
+
+  // Layer 3: Whisper-faint galactic dust band along the tilted plane
+  const dustCount = 380;
+  const dustPos = new Float32Array(dustCount * 3);
+  const dustCol = new Float32Array(dustCount * 3);
+  for (let i = 0; i < dustCount; i++) {
+    const theta = rand() * Math.PI * 2;
+    const phi = Math.PI / 2 + (rand() - 0.5) * 0.26;
+    const radius = 64 + rand() * 24;
+    dustPos[i * 3] = radius * Math.sin(phi) * Math.cos(theta);
+    dustPos[i * 3 + 1] = radius * Math.cos(phi);
+    dustPos[i * 3 + 2] = radius * Math.sin(phi) * Math.sin(theta);
+
+    const warm = rand() < 0.25;
+    if (warm) {
+      color.setRGB(0.32, 0.24, 0.18);
+    } else {
+      color.setRGB(0.14, 0.22, 0.36);
+    }
+    const b = 0.5 + rand() * 0.5;
+    dustCol[i * 3] = color.r * b;
+    dustCol[i * 3 + 1] = color.g * b;
+    dustCol[i * 3 + 2] = color.b * b;
+  }
+  const dustGeo = new THREE.BufferGeometry();
+  dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+  dustGeo.setAttribute('color', new THREE.BufferAttribute(dustCol, 3));
+  const dustMat = new THREE.PointsMaterial({
+    size: 6.2,
+    map: starSpriteMap,
+    sizeAttenuation: true,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.055,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  group.add(new THREE.Points(dustGeo, dustMat));
+
+  return group;
 }
 
 // Module-scoped reusable vectors (zero GC in render loop)
@@ -280,9 +365,9 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       const renderPass = new RenderPass(scene, camera);
       bloomPass = new UnrealBloomPass(
         new THREE.Vector2(initWidth, initHeight),
-        0.14, // subtle physical bloom strength
-        0.32, // tight optical radius
-        1.08, // high threshold so only genuine emissives & sharp glints bloom
+        0.11, // tight physical bloom strength
+        0.26, // crisp optical radius
+        1.32, // high threshold so stray speculars never streak while emissives gleam
       );
       const outputPass = new OutputPass();
       composer.addPass(renderPass);
@@ -313,11 +398,11 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
     keyLight.shadow.normalBias = 0.02;
     scene.add(keyLight);
 
-    const hemiFill = new THREE.HemisphereLight(0x8bb6ef, 0x0c101a, 0.48);
+    const hemiFill = new THREE.HemisphereLight(0x7caae8, 0x070a12, 0.26);
     scene.add(hemiFill);
 
-    const rimLight = new THREE.DirectionalLight(0x8cc6ff, 0.95);
-    rimLight.position.set(-10, -5, -10);
+    const rimLight = new THREE.DirectionalLight(0x6eb8ff, 1.45);
+    rimLight.position.set(-11, -3, -9);
     scene.add(rimLight);
 
     // Subtle studio fill highlight panel (GPU only; skipped on software WebGL)
@@ -694,21 +779,21 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       } else {
         scene.background = new THREE.Color(0x020306);
         scene.fog = null;
-        // Modulate solar key & subtle reflections from 1977 (1 AU) to 2026 (170 AU)
-        scene.environmentIntensity = 0.46 + clampedSolar * 0.14;
+        // High-contrast interstellar solar key + crisp silhouette rim (1977 1 AU -> 2026 173 AU)
+        scene.environmentIntensity = 0.36 + clampedSolar * 0.14;
         keyLight.color.setRGB(
-          0.92 + clampedSolar * 0.08,
-          0.94 + clampedSolar * 0.03,
+          0.94 + clampedSolar * 0.06,
+          0.95 + clampedSolar * 0.03,
           0.98 - clampedSolar * 0.08,
         );
-        keyLight.intensity = 2.3 + clampedSolar * 1.7;
-        hemiFill.color.setHex(0x8bb6ef);
-        hemiFill.groundColor.setHex(0x0c101a);
-        hemiFill.intensity = 0.54 - clampedSolar * 0.12;
-        rimLight.color.setHex(0x8cc6ff);
-        rimLight.intensity = 1.05 - clampedSolar * 0.2;
-        interiorFill.intensity = 0.9;
-        if (softboxLight) softboxLight.intensity = 0.62 + clampedSolar * 0.34;
+        keyLight.intensity = 2.65 + clampedSolar * 1.65;
+        hemiFill.color.setHex(0x7caae8);
+        hemiFill.groundColor.setHex(0x070a12);
+        hemiFill.intensity = 0.28 - clampedSolar * 0.08;
+        rimLight.color.setHex(0x6eb8ff);
+        rimLight.intensity = 1.45 - clampedSolar * 0.25;
+        interiorFill.intensity = 0.85;
+        if (softboxLight) softboxLight.intensity = 0.32 + clampedSolar * 0.22;
         starfield.visible = true;
         distantSun.visible = true;
         const sunScale = 0.52 + clampedSolar * 1.45;
@@ -896,8 +981,12 @@ export const VoyagerViewport: React.FC<VoyagerViewportProps> = ({
       if (composer) {
         composer.dispose();
       }
-      starfield.geometry.dispose();
-      (starfield.material as THREE.Material).dispose();
+      starfield.traverse((obj) => {
+        if (obj instanceof THREE.Points) {
+          obj.geometry.dispose();
+          (obj.material as THREE.Material).dispose();
+        }
+      });
       distantSunGeo.dispose();
       distantSunMat.dispose();
       voyager.dispose();
